@@ -1,0 +1,17 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Banco de dados local (criado ao rodar o projeto)
+*.db
+*.db-journal
+
+# Variáveis de ambiente
+.env
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
