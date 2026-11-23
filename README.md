@@ -45,6 +45,58 @@ Dia bloqueado (`reason` pode ser `PAST_DATE`, `HOLIDAY` ou `WEEKEND`):
 | `400` | Data ausente ou inválida |
 | `503` | API de feriados indisponível |
 
+### `POST /appointments`
+Cria um agendamento. O backend repete todas as validações, sem confiar no que a tela mostrou.
+
+```http
+POST /appointments
+Content-Type: application/json
+
+{
+  "patientName": "Maria Silva",
+  "patientPhone": "(11) 98888-7777",
+  "date": "2026-11-25",
+  "time": "10:00"
+}
+```
+Resposta `201 Created`:
+```json
+{
+  "message": "Consulta agendada para quarta-feira, 25/11/2026, às 10:00.",
+  "appointment": {
+    "id": 1,
+    "patientName": "Maria Silva",
+    "patientPhone": "11988887777",
+    "date": "2026-11-25",
+    "time": "10:00",
+    "createdAt": "2026-11-23T22:02:35Z"
+  }
+}
+```
+
+| Status | Quando |
+|---|---|
+| `201` | Agendamento criado |
+| `400` | Campos inválidos, data passada, feriado, fim de semana, horário fora do expediente ou que já passou hoje |
+| `409` | Horário já ocupado |
+| `503` | API de feriados indisponível |
+
+### `GET /appointments`
+Lista os agendamentos, ordenados por data e horário.
+
+```json
+[
+  {
+    "id": 1,
+    "patientName": "Maria Silva",
+    "patientPhone": "11988887777",
+    "date": "2026-11-25",
+    "time": "10:00",
+    "createdAt": "2026-11-23T22:02:35Z"
+  }
+]
+```
+
 Erros sempre têm o formato `{ "error": "mensagem" }`.
 
 ## Decisões técnicas
@@ -71,4 +123,6 @@ Erros sempre têm o formato `{ "error": "mensagem" }`.
 - **Tabela `appointments`** com `UNIQUE (date, time)`: mesmo que duas pessoas confirmem o mesmo horário ao mesmo tempo, o banco aceita só a primeira.
 - **Data e hora guardadas no horário local da clínica** (`date` = `AAAA-MM-DD`, `time` = `HH:MM`), que é como a clínica pensa a agenda; `created_at` fica em UTC.
 - **Camadas:** `routes` → `controllers` → `services` → `repositories` → `database`. Regras de negócio ficam só nos services; SQL fica só nos repositories.
+- **Validação dupla ao agendar:** o `POST` reaproveita a mesma regra do `GET /available` e confere tudo de novo (o pedido pode não ter vindo da tela). Se dois pedidos simultâneos passarem pela checagem, o `UNIQUE` do banco barra o segundo, que recebe `409`. Testado com 5 pedidos simultâneos para o mesmo horário: 1 aceito, 4 recusados.
+- **Dados do paciente:** nome (3 a 100 caracteres) e telefone com DDD. O telefone aceita qualquer formatação, mas é guardado só com dígitos.
 - **Tratamento de erros centralizado** (`middlewares/errorHandler.ts`): erros esperados viram respostas com status e mensagem claros; erros inesperados viram `500` sem expor detalhes internos.

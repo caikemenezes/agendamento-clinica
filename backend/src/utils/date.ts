@@ -53,6 +53,12 @@ export function getNowInClinicTimezone(now: Date = new Date()): { date: string; 
   };
 }
 
+// "2026-11-25" -> "25/11/2026"
+export function formatDateBR(date: string): string {
+  const [year, month, day] = date.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 // 480 -> "08:00"
 export function minutesToTime(minutes: number): string {
   const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
