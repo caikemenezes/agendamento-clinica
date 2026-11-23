@@ -4,6 +4,49 @@ Mini sistema de agendamento de consultas: o usuário escolhe uma data, vê os ho
 
 > 🚧 Em construção — este README é atualizado a cada etapa.
 
+## Endpoints
+
+### `GET /available?date=AAAA-MM-DD`
+Informa se o dia está aberto e quais horários estão livres.
+
+```http
+GET /available?date=2026-11-25
+```
+```json
+{
+  "date": "2026-11-25",
+  "weekday": "quarta-feira",
+  "timezone": "America/Sao_Paulo",
+  "isBusinessDay": true,
+  "holiday": null,
+  "reason": null,
+  "message": "8 horário(s) disponível(is).",
+  "availableSlots": ["08:00", "10:00", "11:00", "12:00", "13:00", "15:00", "16:00", "17:00"]
+}
+```
+
+Dia bloqueado (`reason` pode ser `PAST_DATE`, `HOLIDAY` ou `WEEKEND`):
+```json
+{
+  "date": "2026-12-25",
+  "weekday": "sexta-feira",
+  "timezone": "America/Sao_Paulo",
+  "isBusinessDay": false,
+  "holiday": "Natal",
+  "reason": "HOLIDAY",
+  "message": "Feriado: Natal. A clínica não atende.",
+  "availableSlots": []
+}
+```
+
+| Status | Quando |
+|---|---|
+| `200` | Sempre que a data é válida, mesmo bloqueada (o motivo vem em `reason`) |
+| `400` | Data ausente ou inválida |
+| `503` | API de feriados indisponível |
+
+Erros sempre têm o formato `{ "error": "mensagem" }`.
+
 ## Decisões técnicas
 
 ### Feriados (API Nager.Date)
@@ -22,3 +65,10 @@ Mini sistema de agendamento de consultas: o usuário escolhe uma data, vê os ho
 - **Datas passadas são bloqueadas**, e, no dia de hoje, só aparecem horários que ainda não começaram. O enunciado não pede, mas marcar no passado não faz sentido.
 - **Datas inválidas** (`2026-02-30`, `25/12/2026`) são recusadas com erro `400`.
 - **Ordem das verificações:** data passada → feriado → fim de semana → horários ocupados. A resposta sempre diz o motivo do bloqueio (`reason`) e uma mensagem pronta para a tela.
+
+### Banco de dados e arquitetura
+- **SQLite (`better-sqlite3`):** o banco é um arquivo (`backend/clinic.db`) criado automaticamente na primeira execução. Quem avalia não precisa instalar nem configurar nenhum servidor de banco.
+- **Tabela `appointments`** com `UNIQUE (date, time)`: mesmo que duas pessoas confirmem o mesmo horário ao mesmo tempo, o banco aceita só a primeira.
+- **Data e hora guardadas no horário local da clínica** (`date` = `AAAA-MM-DD`, `time` = `HH:MM`), que é como a clínica pensa a agenda; `created_at` fica em UTC.
+- **Camadas:** `routes` → `controllers` → `services` → `repositories` → `database`. Regras de negócio ficam só nos services; SQL fica só nos repositories.
+- **Tratamento de erros centralizado** (`middlewares/errorHandler.ts`): erros esperados viram respostas com status e mensagem claros; erros inesperados viram `500` sem expor detalhes internos.
