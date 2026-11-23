@@ -99,6 +99,26 @@ Lista os agendamentos, ordenados por data e horário.
 
 Erros sempre têm o formato `{ "error": "mensagem" }`.
 
+## Testes automatizados
+
+```bash
+cd backend
+npm test
+```
+
+São 41 testes (Vitest + Supertest), em cerca de 1 segundo:
+
+| Arquivo | O que cobre |
+|---|---|
+| `tests/date.test.ts` | Validação de datas, fim de semana, fuso de Brasília |
+| `tests/holidayService.test.ts` | Feriado nacional × estadual, ano da data, cache, chamadas simultâneas, API fora do ar |
+| `tests/availabilityService.test.ts` | Os 10 horários, ocupados, "hoje", fim de semana, feriado, passado, data inválida |
+| `tests/appointments.api.test.ts` | As 3 rotas de ponta a ponta: sucesso, 400, 409, 503, 404 e 5 pedidos simultâneos no mesmo horário |
+
+- **Sem internet:** a API de feriados é simulada (`tests/helpers/mockHolidayApi.ts`) com feriados fixos.
+- **Sem tocar no banco real:** os testes usam SQLite em memória (`DATABASE_PATH=:memory:`).
+- **Relógio fixo:** o "agora" é congelado em 24/11/2026, 13:30 de Brasília, então o resultado não depende do dia em que os testes rodam.
+
 ## Decisões técnicas
 
 ### Feriados (API Nager.Date)
