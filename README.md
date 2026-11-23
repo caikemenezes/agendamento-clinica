@@ -145,6 +145,8 @@ São 41 testes (Vitest + Supertest), em cerca de 1 segundo:
 - **Chamadas à API isoladas em `src/services/api.ts`**, que transforma qualquer erro da API (`{ error }`) numa mensagem para a tela.
 - **Conflito tratado:** se outra pessoa reservar o horário enquanto o paciente preenche os dados, a API responde `409`, a tela avisa e recarrega os horários livres.
 - **Respostas fora de ordem ignoradas:** se o usuário troca de data rápido, uma resposta antiga que chega atrasada não sobrescreve a nova.
+- **Dados reais de data, fuso e dias úteis:** o cabeçalho mostra a data e a hora atuais da clínica com o fuso (`America/Sao_Paulo`, GMT-3). Ao escolher uma data, um painel mostra o dia da semana, a situação (dia útil, fim de semana, feriado com o nome, data passada), o fuso e quantos horários estão livres, tudo vindo do `GET /available`.
+- **Agenda** (`GET /appointments`): lista os agendamentos abaixo do formulário e se atualiza sozinha após cada novo agendamento.
 - **Máscara de telefone** enquanto digita; o calendário não deixa escolher datas passadas (o backend também recusa).
 - **Endereço da API configurável** por `VITE_API_URL` (veja `frontend/.env.example`).
 

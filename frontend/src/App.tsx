@@ -1,10 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppointmentForm } from "./components/AppointmentForm";
+import { AppointmentList } from "./components/AppointmentList";
+import { ClinicClock } from "./components/ClinicClock";
 import { Confirmation } from "./components/Confirmation";
 import { DatePicker } from "./components/DatePicker";
+import { DayInfo } from "./components/DayInfo";
 import { SlotList } from "./components/SlotList";
-import { ApiError, createAppointment, getAvailability } from "./services/api";
-import type { AppointmentConfirmation, DayAvailability } from "./types";
+import { ApiError, createAppointment, getAvailability, listAppointments } from "./services/api";
+import type { Appointment, AppointmentConfirmation, DayAvailability } from "./types";
 import { todayInClinic } from "./utils/format";
 
 export function App() {
@@ -16,6 +19,26 @@ export function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<AppointmentConfirmation | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+
+  async function loadAppointments() {
+    setAppointmentsLoading(true);
+    setAppointmentsError(null);
+    try {
+      setAppointments(await listAppointments());
+    } catch (error) {
+      setAppointmentsError(error instanceof ApiError ? error.message : "Erro ao carregar a agenda.");
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  }
+
+  // Carrega a agenda uma vez, quando a tela abre.
+  useEffect(() => {
+    loadAppointments();
+  }, []);
 
   // Guarda a última data pedida: se o usuário trocar de data rápido,
   // uma resposta antiga que chegue atrasada é ignorada.
@@ -56,6 +79,7 @@ export function App() {
     try {
       const result = await createAppointment({ patientName, patientPhone, date, time: selectedTime });
       setConfirmation(result);
+      loadAppointments();
     } catch (error) {
       setSubmitError(error instanceof ApiError ? error.message : "Erro ao agendar.");
       // Horário ocupado por outra pessoa nesse meio-tempo: atualiza a lista.
@@ -81,6 +105,7 @@ export function App() {
         <p className="eyebrow">Clínica</p>
         <h1>Agendamento de consultas</h1>
         <p className="muted">Segunda a sexta, das 08:00 às 18:00 · consultas de 1 hora</p>
+        <ClinicClock />
       </header>
 
       <main className="card">
@@ -88,7 +113,9 @@ export function App() {
           <Confirmation confirmation={confirmation} onNew={handleNewAppointment} />
         ) : (
           <>
-            <DatePicker value={date} min={todayInClinic()} onChange={handleDateChange} />
+            <DatePicker value={date} min={todayInClinic()} onChange={handleDateChange}>
+              {availability && !loading && <DayInfo availability={availability} />}
+            </DatePicker>
 
             {/* Aviso de conflito (409): o formulário fechou, então a mensagem aparece aqui. */}
             {submitError && !selectedTime && (
@@ -126,6 +153,13 @@ export function App() {
           </>
         )}
       </main>
+
+      <AppointmentList
+        appointments={appointments}
+        loading={appointmentsLoading}
+        error={appointmentsError}
+        onRefresh={loadAppointments}
+      />
     </div>
   );
 }

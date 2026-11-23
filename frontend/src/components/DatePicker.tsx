@@ -1,10 +1,13 @@
+import type { ReactNode } from "react";
+
 interface DatePickerProps {
   value: string;
   min: string;
   onChange: (date: string) => void;
+  children?: ReactNode; // informações do dia escolhido, abaixo do calendário
 }
 
-export function DatePicker({ value, min, onChange }: DatePickerProps) {
+export function DatePicker({ value, min, onChange, children }: DatePickerProps) {
   return (
     <section className="step">
       <h2 className="step-title">
@@ -18,6 +21,7 @@ export function DatePicker({ value, min, onChange }: DatePickerProps) {
         min={min}
         onChange={(event) => onChange(event.target.value)}
       />
+      {children}
     </section>
   );
 }

@@ -237,7 +237,110 @@ body {
   font-weight: 500;
 }
 
+/* Relógio da clínica */
+.clock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Dados do dia */
+.day-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.day-info div {
+  padding: 10px 12px;
+  background: var(--soft);
+  border-radius: var(--radius);
+}
+.day-info dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.day-info dd {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.badge {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.badge-open {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.badge-closed {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* Agenda */
+.agenda {
+  margin-top: 20px;
+  padding: 20px 24px;
+}
+.agenda-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.agenda-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.link-button {
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.table-wrapper {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.table th {
+  padding: 8px 8px 8px 0;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 10px 8px 10px 0;
+  border-bottom: 1px solid var(--soft);
+}
+.nowrap {
+  white-space: nowrap;
+}
+
 @media (max-width: 480px) {
+  .day-info {
+    grid-template-columns: 1fr;
+  }
+  .agenda {
+    padding: 16px;
+  }
   .page {
     padding-top: 28px;
   }
