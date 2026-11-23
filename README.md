@@ -138,6 +138,16 @@ São 41 testes (Vitest + Supertest), em cerca de 1 segundo:
 - **Datas inválidas** (`2026-02-30`, `25/12/2026`) são recusadas com erro `400`.
 - **Ordem das verificações:** data passada → feriado → fim de semana → horários ocupados. A resposta sempre diz o motivo do bloqueio (`reason`) e uma mensagem pronta para a tela.
 
+### Frontend
+- **React + Vite + TypeScript**, sem biblioteca de componentes: a tela é simples e o CSS é próprio (`src/styles.css`), em tons neutros.
+- **Fluxo em 3 passos numa única tela:** data → horário → dados do paciente → confirmação (com protocolo).
+- **O frontend não decide regra nenhuma:** só mostra o que o backend responde, incluindo a mensagem de bloqueio ("Feriado: Natal...").
+- **Chamadas à API isoladas em `src/services/api.ts`**, que transforma qualquer erro da API (`{ error }`) numa mensagem para a tela.
+- **Conflito tratado:** se outra pessoa reservar o horário enquanto o paciente preenche os dados, a API responde `409`, a tela avisa e recarrega os horários livres.
+- **Respostas fora de ordem ignoradas:** se o usuário troca de data rápido, uma resposta antiga que chega atrasada não sobrescreve a nova.
+- **Máscara de telefone** enquanto digita; o calendário não deixa escolher datas passadas (o backend também recusa).
+- **Endereço da API configurável** por `VITE_API_URL` (veja `frontend/.env.example`).
+
 ### Banco de dados e arquitetura
 - **SQLite (`better-sqlite3`):** o banco é um arquivo (`backend/clinic.db`) criado automaticamente na primeira execução. Quem avalia não precisa instalar nem configurar nenhum servidor de banco.
 - **Tabela `appointments`** com `UNIQUE (date, time)`: mesmo que duas pessoas confirmem o mesmo horário ao mesmo tempo, o banco aceita só a primeira.
