@@ -10,6 +10,9 @@ import { generateDailySlots, getDayAvailability } from "./availabilityService.js
 
 const TIME_FORMAT = /^\d{2}:\d{2}$/;
 
+// Código de erro do SQLite para "violou uma restrição UNIQUE" (SQLITE_CONSTRAINT_UNIQUE).
+const SQLITE_CONSTRAINT_UNIQUE = 2067;
+
 export interface AppointmentConfirmation {
   message: string;
   appointment: Appointment;
@@ -81,7 +84,7 @@ export async function scheduleAppointment(
     appointment = insertAppointment(data);
   } catch (error) {
     // Duas pessoas confirmaram o mesmo horário quase juntas: o UNIQUE do banco barrou a segunda.
-    if ((error as { code?: string }).code === "SQLITE_CONSTRAINT_UNIQUE") {
+    if ((error as { errcode?: number }).errcode === SQLITE_CONSTRAINT_UNIQUE) {
       throw new AppError("Este horário acabou de ser reservado. Escolha outro.", 409);
     }
     throw error;

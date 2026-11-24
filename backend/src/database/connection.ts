@@ -1,9 +1,11 @@
-import Database from "better-sqlite3";
+// SQLite embutido no próprio Node.js (22.13+): nenhuma dependência nativa para
+// instalar ou compilar, então o projeto roda com um simples "npm install".
+import { DatabaseSync } from "node:sqlite";
 
 // Caminho do arquivo do banco. Nos testes usamos ":memory:" (banco só em memória).
 const DATABASE_PATH = process.env.DATABASE_PATH ?? "clinic.db";
 
-export const db = new Database(DATABASE_PATH);
+export const db = new DatabaseSync(DATABASE_PATH);
 
 // Cria a tabela na primeira execução; nas seguintes não faz nada.
 // date e time ficam no horário local da clínica (America/Sao_Paulo).

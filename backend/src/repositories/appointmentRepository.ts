@@ -50,11 +50,11 @@ export function findBookedTimesByDate(date: string): string[] {
 export function findAllAppointments(): Appointment[] {
   const rows = db
     .prepare("SELECT * FROM appointments ORDER BY date, time")
-    .all() as AppointmentRow[];
+    .all() as unknown as AppointmentRow[];
   return rows.map(toAppointment);
 }
 
-// Lança erro do SQLite (SQLITE_CONSTRAINT_UNIQUE) se o horário já estiver reservado.
+// Lança erro do SQLite (UNIQUE constraint failed) se o horário já estiver reservado.
 export function createAppointment(data: NewAppointment): Appointment {
   const row = db
     .prepare(
@@ -62,6 +62,6 @@ export function createAppointment(data: NewAppointment): Appointment {
        VALUES (?, ?, ?, ?)
        RETURNING *`,
     )
-    .get(data.patientName, data.patientPhone, data.date, data.time) as AppointmentRow;
+    .get(data.patientName, data.patientPhone, data.date, data.time) as unknown as AppointmentRow;
   return toAppointment(row);
 }
