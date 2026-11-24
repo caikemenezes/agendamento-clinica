@@ -1,8 +1,119 @@
 # Agendamento Clínica
 
-Mini sistema de agendamento de consultas: o usuário escolhe uma data, vê os horários disponíveis e cria um agendamento. Feriados (via API pública [Nager.Date](https://date.nager.at)) e fins de semana são bloqueados.
+Mini sistema web de agendamento de consultas para uma clínica. O paciente escolhe uma data, vê os horários livres, informa nome e telefone e recebe a confirmação. Feriados nacionais (consultados na API pública [Nager.Date](https://date.nager.at)), fins de semana e horários já ocupados são bloqueados.
 
-> 🚧 Em construção — este README é atualizado a cada etapa.
+## Sumário
+
+- [O que o sistema faz](#o-que-o-sistema-faz)
+- [Tecnologias](#tecnologias)
+- [Como rodar](#como-rodar)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Endpoints](#endpoints)
+- [Testes automatizados](#testes-automatizados)
+- [Decisões técnicas](#decisões-técnicas)
+- [O que eu faria com mais tempo](#o-que-eu-faria-com-mais-tempo)
+
+## O que o sistema faz
+
+| Requisito do teste | Como foi atendido |
+|---|---|
+| Usuário escolhe uma data | Calendário na tela (datas passadas desabilitadas) |
+| Sistema mostra horários disponíveis | `GET /available` devolve os horários livres, já sem os ocupados |
+| Usuário escolhe um horário e cria o agendamento | Formulário com nome e telefone → `POST /appointments` |
+| Sistema salva e retorna a confirmação | Gravado no SQLite; a tela mostra a confirmação com número de protocolo |
+| Dados reais de data, fuso horário e dias úteis | Relógio da clínica no cabeçalho (`America/Sao_Paulo`, GMT-3) e painel do dia: dia da semana, dia útil ou feriado (com o nome), fuso e horários livres |
+| API de feriados consumida no backend | `backend/src/services/holidayService.ts`, com cache por ano |
+| Bloquear feriados e fins de semana | Validado no backend, tanto ao listar quanto ao agendar |
+| Expediente 08:00–18:00, consultas de 1 hora | 10 horários por dia, de 08:00 a 17:00 |
+| Não marcar em horário ocupado | Conferência no código + restrição `UNIQUE` no banco (resiste a cliques simultâneos) |
+| Endpoints mínimos | `GET /available`, `POST /appointments`, `GET /appointments` |
+
+## Tecnologias
+
+| Parte | Tecnologia | Por quê |
+|---|---|---|
+| Backend | Node.js + TypeScript + Express 5 | Uma linguagem só nas duas pontas; tipos pegam erros antes de rodar; Express é simples e conhecido |
+| Banco de dados | SQLite embutido no Node.js (`node:sqlite`) | O banco é um arquivo criado sozinho e o driver já vem no Node: nada para instalar, configurar ou compilar |
+| Frontend | React 19 + Vite + TypeScript | Padrão de mercado; tela simples, sem biblioteca de componentes, com CSS próprio |
+| Testes | Vitest + Supertest | 41 testes rodando em cerca de 1 segundo, sem internet e sem tocar no banco real |
+
+## Como rodar
+
+**Pré-requisito:** [Node.js](https://nodejs.org) **22.13 ou superior** (desenvolvido e testado na versão 24). Não é preciso instalar banco de dados: o SQLite já vem dentro do Node.
+
+O backend e o frontend são projetos separados. Use **dois terminais**.
+
+**Terminal 1 — backend (API):**
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+A API sobe em `http://localhost:3333`. O banco (`backend/clinic.db`) é criado automaticamente na primeira execução.
+
+**Terminal 2 — frontend (tela):**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abra **http://localhost:5174** no navegador.
+
+**Testes (opcional):**
+
+```bash
+cd backend
+npm test
+```
+
+### Outros comandos
+
+| Pasta | Comando | O que faz |
+|---|---|---|
+| `backend` | `npm run build` | Confere os tipos e gera a versão final em `dist/` |
+| `backend` | `npm start` | Roda a versão final (depois do build) |
+| `frontend` | `npm run build` | Confere os tipos e gera a versão final da tela em `dist/` |
+| `frontend` | `npm run preview` | Abre a versão final da tela |
+
+### Configuração (opcional)
+
+| Variável | Onde | Padrão | Para que serve |
+|---|---|---|---|
+| `PORT` | backend | `3333` | Porta da API |
+| `DATABASE_PATH` | backend | `clinic.db` | Caminho do arquivo do banco |
+| `VITE_API_URL` | frontend | `http://localhost:3333` | Endereço da API usado pela tela (veja `frontend/.env.example`) |
+
+## Estrutura do projeto
+
+```
+backend/
+  src/
+    server.ts          liga o servidor na porta
+    app.ts             monta a aplicação: CORS, JSON, rotas e tratamento de erros
+    routes/            os endereços da API
+    controllers/       recebem o pedido HTTP e devolvem a resposta (sem regras)
+    services/          regras de negócio: feriados, horários disponíveis, agendamento
+    repositories/      único ponto de acesso ao banco (SQL)
+    database/          conexão SQLite e criação da tabela
+    middlewares/       tratamento central de erros e rota não encontrada
+    errors/            AppError: erro com status HTTP
+    config/            regras da clínica (expediente, duração, fuso)
+    utils/             funções de data
+  tests/               testes unitários e de integração
+frontend/
+  src/
+    App.tsx            estado da tela e fluxo
+    components/        calendário, horários, formulário, confirmação, relógio, painel do dia, agenda
+    services/api.ts    todas as chamadas ao backend
+    utils/format.ts    datas, fuso e máscara de telefone
+    styles.css         visual
+```
+
+O caminho de um pedido no backend é sempre o mesmo: **rota → controller → service → repository → banco**. Cada camada tem uma responsabilidade só: as regras ficam nos services e o SQL fica nos repositories.
 
 ## Endpoints
 
@@ -151,10 +262,22 @@ São 41 testes (Vitest + Supertest), em cerca de 1 segundo:
 - **Endereço da API configurável** por `VITE_API_URL` (veja `frontend/.env.example`).
 
 ### Banco de dados e arquitetura
-- **SQLite (`better-sqlite3`):** o banco é um arquivo (`backend/clinic.db`) criado automaticamente na primeira execução. Quem avalia não precisa instalar nem configurar nenhum servidor de banco.
+- **SQLite embutido no Node (`node:sqlite`):** o banco é um arquivo (`backend/clinic.db`) criado automaticamente na primeira execução. Quem avalia não precisa instalar nem configurar nenhum servidor de banco.
+- **Por que não `better-sqlite3`:** o projeto começou com ele, mas, ao testar a instalação numa pasta limpa (como quem avalia faria), o `npm install` tentou compilar o módulo nativo e falhou num Windows sem Visual Studio. O driver embutido no Node elimina essa dependência nativa. A troca mexeu só na conexão e no repository, sem tocar em regras, rotas ou testes, o que mostra na prática a vantagem de isolar o acesso ao banco numa camada.
 - **Tabela `appointments`** com `UNIQUE (date, time)`: mesmo que duas pessoas confirmem o mesmo horário ao mesmo tempo, o banco aceita só a primeira.
 - **Data e hora guardadas no horário local da clínica** (`date` = `AAAA-MM-DD`, `time` = `HH:MM`), que é como a clínica pensa a agenda; `created_at` fica em UTC.
 - **Camadas:** `routes` → `controllers` → `services` → `repositories` → `database`. Regras de negócio ficam só nos services; SQL fica só nos repositories.
 - **Validação dupla ao agendar:** o `POST` reaproveita a mesma regra do `GET /available` e confere tudo de novo (o pedido pode não ter vindo da tela). Se dois pedidos simultâneos passarem pela checagem, o `UNIQUE` do banco barra o segundo, que recebe `409`. Testado com 5 pedidos simultâneos para o mesmo horário: 1 aceito, 4 recusados.
 - **Dados do paciente:** nome (3 a 100 caracteres) e telefone com DDD. O telefone aceita qualquer formatação, mas é guardado só com dígitos.
 - **Tratamento de erros centralizado** (`middlewares/errorHandler.ts`): erros esperados viram respostas com status e mensagem claros; erros inesperados viram `500` sem expor detalhes internos.
+
+## O que eu faria com mais tempo
+
+- **Login para a área da clínica.** Hoje a agenda (`GET /appointments`) mostra nomes e telefones a qualquer pessoa que abra a tela. Em produção, ela ficaria numa área restrita.
+- **Cancelar e remarcar consultas** (`DELETE` e `PATCH /appointments/:id`).
+- **Confirmação e lembrete pelo WhatsApp**, que era a dor original da clínica.
+- **Feriados estaduais e municipais**, configurando a localização da clínica e filtrando pelo campo `counties` da API.
+- **Validação com uma biblioteca de esquemas** (como Zod), compartilhando os tipos entre backend e frontend.
+- **Paginação e filtro por data** na listagem de agendamentos.
+- **Banco PostgreSQL e deploy**, trocando apenas a camada de repository.
+- **Testes do frontend** (componentes e fluxo completo no navegador).
